@@ -94,7 +94,7 @@ func Oidc() gin.HandlerFunc {
 				return
 			}
 
-			userToken, err := jwt.GenToken(userinfo, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, OIDCName)
+			userToken, err := jwt.GenToken(userinfo, conf.OidcExpireTime, conf.AuthConf.Secret, OIDCName)
 			if err != nil {
 				log.Warnf("gen user's token information failed: %s", err)
 				c.AbortWithStatus(http.StatusForbidden)
