@@ -47,33 +47,34 @@ const (
 )
 
 var (
-	ENV              string
-	Schema           gjson.Result
-	WorkDir          = "."
-	ConfigFile       = ""
-	ServerHost       = "0.0.0.0"
-	ServerPort       = 80
-	SSLHost          = "0.0.0.0"
-	SSLPort          = 443
-	SSLCert          string
-	SSLKey           string
-	ETCDConfig       *Etcd
-	ErrorLogLevel    = "warn"
-	ErrorLogPath     = "logs/error.log"
-	AccessLogPath    = "logs/access.log"
-	UserList         = make(map[string]User, 2)
-	AuthConf         Authentication
-	SSLDefaultStatus = 1 //enable ssl by default
-	ImportSizeLimit  = 10 * 1024 * 1024
-	AllowList        []string
-	Plugins          = map[string]bool{}
-	SecurityConf     Security
-	CookieStore      = sessions.NewCookieStore([]byte("oidc"))
-	OidcEnabled      = false
-	OidcId           string
-	OidcConfig       oauth2.Config
-	OidcExpireTime   int
-	OidcUserInfoURL  string
+	ENV               string
+	Schema            gjson.Result
+	WorkDir           = "."
+	ConfigFile        = ""
+	ServerHost        = "0.0.0.0"
+	ServerPort        = 80
+	SSLHost           = "0.0.0.0"
+	SSLPort           = 443
+	SSLCert           string
+	SSLKey            string
+	ETCDConfig        *Etcd
+	ErrorLogLevel     = "warn"
+	ErrorLogPath      = "logs/error.log"
+	AccessLogPath     = "logs/access.log"
+	UserList          = make(map[string]User, 2)
+	AuthConf          Authentication
+	SSLDefaultStatus  = 1 //enable ssl by default
+	ImportSizeLimit   = 10 * 1024 * 1024
+	AllowList         []string
+	Plugins           = map[string]bool{}
+	SecurityConf      Security
+	CookieStore       = sessions.NewCookieStore([]byte("oidc"))
+	OidcEnabled       = false
+	OidcId            string
+	OidcConfig        oauth2.Config
+	OidcExpireTime    int
+	OidcUserInfoURL   string
+	OidcUserinfoField UserinfoField
 )
 
 type MTLS struct {
@@ -137,16 +138,23 @@ type Authentication struct {
 	Users      []User
 }
 
+type UserinfoField struct {
+	ID     string `mapstructure:"id"`
+	Avatar string `mapstructure:"avatar"`
+	Name   string `mapstructure:"name"`
+}
+
 type Oidc struct {
-	Enabled      bool   `mapstructure:"enabled"`
-	ExpireTime   int    `mapstructure:"expire_time" yaml:"expire_time"`
-	ClientID     string `mapstructure:"client_id"`
-	ClientSecret string `mapstructure:"client_secret"`
-	AuthURL      string `mapstructure:"auth_url"`
-	TokenURL     string `mapstructure:"token_url"`
-	UserInfoURL  string `mapstructure:"user_info_url"`
-	RedirectURL  string `mapstructure:"redirect_url"`
-	Scope        string
+	Enabled       bool   `mapstructure:"enabled"`
+	ExpireTime    int    `mapstructure:"expire_time" yaml:"expire_time"`
+	ClientID      string `mapstructure:"client_id"`
+	ClientSecret  string `mapstructure:"client_secret"`
+	AuthURL       string `mapstructure:"auth_url"`
+	TokenURL      string `mapstructure:"token_url"`
+	UserInfoURL   string `mapstructure:"user_info_url"`
+	RedirectURL   string `mapstructure:"redirect_url"`
+	Scope         string
+	UserinfoField UserinfoField `mapstructure:"userinfo_field"`
 }
 
 type Config struct {
@@ -319,6 +327,7 @@ func initOidc(conf Oidc) {
 	OidcConfig.Scopes = append(OidcConfig.Scopes, conf.Scope)
 	OidcConfig.RedirectURL = conf.RedirectURL
 	OidcUserInfoURL = conf.UserInfoURL
+	OidcUserinfoField = conf.UserinfoField
 }
 
 func initPlugins(plugins []string) {

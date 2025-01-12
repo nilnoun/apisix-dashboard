@@ -17,16 +17,18 @@
 package filter
 
 import (
+	"fmt"
 	"github.com/google/uuid"
+	"io"
 	"net/http"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 
 	"github.com/apisix/manager-api/internal/conf"
 	"github.com/apisix/manager-api/internal/log"
 	"github.com/apisix/manager-api/internal/utils/jwt"
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -79,34 +81,14 @@ func Oidc() gin.HandlerFunc {
 				return
 			}
 
-			// in exchange for user's information
-			token := &Token{oauth2Token.AccessToken}
-			providerConfig := oidc.ProviderConfig{UserInfoURL: conf.OidcUserInfoURL}
-			userInfo, err := providerConfig.NewProvider(c).UserInfo(c, token)
+			userinfo, err := GetUserInfoByToken(conf.OidcUserInfoURL, oauth2Token.AccessToken)
 			if err != nil {
-				log.Warnf("exchange access_token for user's information failed: %s", err)
+				log.Warnf("get user info by access_token failed: %s", err)
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
 
-			// set the cookie
-			info := &jwt.Userinfo{
-				Name:   userInfo.Email,
-				UserId: userInfo.Email,
-			}
-
-			var claims map[string]any
-			if err = userInfo.Claims(&claims); err != nil {
-				log.Warnf("provider claims failed: %s", err)
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
-			info.Avatar, _ = claims["picture"].(string)
-			if name, ok := claims["name"].(string); ok {
-				info.Name = name
-			}
-
-			userToken, err := jwt.GenToken(info, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, OIDCName)
+			userToken, err := jwt.GenToken(userinfo, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, OIDCName)
 			if err != nil {
 				log.Warnf("gen user's token information failed: %s", err)
 				c.AbortWithStatus(http.StatusForbidden)
@@ -126,4 +108,36 @@ func Oidc() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func GetUserInfoByToken(url string, token string) (*jwt.Userinfo, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fail to get user info by token: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	data := &jwt.Userinfo{
+		UserId: gjson.GetBytes(body, conf.OidcUserinfoField.ID).String(),
+		Name:   gjson.GetBytes(body, conf.OidcUserinfoField.Name).String(),
+		Avatar: gjson.GetBytes(body, conf.OidcUserinfoField.Avatar).String(),
+	}
+
+	return data, nil
 }

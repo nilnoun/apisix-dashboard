@@ -90,6 +90,12 @@ oidc:
   user_info_url: http://172.17.0.1:8080/auth/realms/master/protocol/openid-connect/userinfo
   redirect_url: http://127.0.0.1:9000/apisix/admin/oidc/callback
   scope: openid
+  userinfo_field:
+    id: "data.email"
+    name: "data.name"
+    avatar: "data.avatar_url"
+  white_list:
+    - nilnoun1@foxmail.com
 
 plugins:
   - api-breaker
