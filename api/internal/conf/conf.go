@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/deckarep/golang-set"
 	"github.com/gorilla/sessions"
 	"github.com/spf13/viper"
 	"github.com/tidwall/gjson"
@@ -75,6 +76,7 @@ var (
 	OidcExpireTime    int
 	OidcUserInfoURL   string
 	OidcUserinfoField UserinfoField
+	OidcWhitelistSet  mapset.Set
 )
 
 type MTLS struct {
@@ -155,6 +157,7 @@ type Oidc struct {
 	RedirectURL   string `mapstructure:"redirect_url"`
 	Scope         string
 	UserinfoField UserinfoField `mapstructure:"userinfo_field"`
+	Whitelist     []string      `mapstructure:"whitelist"`
 }
 
 type Config struct {
@@ -328,6 +331,11 @@ func initOidc(conf Oidc) {
 	OidcConfig.RedirectURL = conf.RedirectURL
 	OidcUserInfoURL = conf.UserInfoURL
 	OidcUserinfoField = conf.UserinfoField
+
+	OidcWhitelistSet = mapset.NewSet()
+	for _, item := range conf.Whitelist {
+		OidcWhitelistSet.Add(item)
+	}
 }
 
 func initPlugins(plugins []string) {

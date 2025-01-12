@@ -88,6 +88,12 @@ func Oidc() gin.HandlerFunc {
 				return
 			}
 
+			if !conf.OidcWhitelistSet.Contains(userinfo.UserId) {
+				log.Warnf("The user is not on the whitelist, user_id: %s", userinfo.UserId)
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+
 			userToken, err := jwt.GenToken(userinfo, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, OIDCName)
 			if err != nil {
 				log.Warnf("gen user's token information failed: %s", err)

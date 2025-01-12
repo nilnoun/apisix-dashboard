@@ -94,8 +94,8 @@ oidc:
     id: "data.email"
     name: "data.name"
     avatar: "data.avatar_url"
-  white_list:
-    - nilnoun1@foxmail.com
+  whitelist:
+    - ""
 
 plugins:
   - api-breaker
