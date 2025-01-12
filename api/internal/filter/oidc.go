@@ -17,6 +17,7 @@
 package filter
 
 import (
+	"github.com/google/uuid"
 	"net/http"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -25,6 +26,17 @@ import (
 
 	"github.com/apisix/manager-api/internal/conf"
 	"github.com/apisix/manager-api/internal/log"
+	"github.com/apisix/manager-api/internal/utils/jwt"
+)
+
+const (
+	OIDCName           = "oidc"
+	OIDCStateCookieKey = "oidc_state"
+	OIDCTokenCookieKey = "oidc_token"
+
+	OIDCLoginPath    = "/apisix/admin/oidc/login"
+	OIDCCallbackPath = "/apisix/admin/oidc/callback"
+	OIDCLogoutPath   = "/apisix/admin/oidc/logout"
 )
 
 type Token struct {
@@ -38,16 +50,22 @@ func (token *Token) Token() (*oauth2.Token, error) {
 
 func Oidc() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.URL.Path == "/apisix/admin/oidc/login" {
-			url := conf.OidcConfig.AuthCodeURL(conf.State)
+		if c.Request.URL.Path == OIDCLoginPath {
+			state := uuid.New().String()
+			c.SetCookie(OIDCStateCookieKey, state, 300, OIDCCallbackPath, "", false, true)
+
+			url := conf.OidcConfig.AuthCodeURL(state)
 			c.Redirect(302, url)
 			c.Abort()
 			return
 		}
 
-		if c.Request.URL.Path == "/apisix/admin/oidc/callback" {
+		if c.Request.URL.Path == OIDCCallbackPath {
+			authState, _ := c.Cookie(OIDCStateCookieKey)
+			c.SetCookie(OIDCStateCookieKey, "", -1, OIDCCallbackPath, "", false, true)
+
 			state := c.Query("state")
-			if state != conf.State {
+			if state != authState {
 				log.Warn("the state does not match")
 				c.AbortWithStatus(http.StatusForbidden)
 				return
@@ -64,8 +82,7 @@ func Oidc() gin.HandlerFunc {
 			// in exchange for user's information
 			token := &Token{oauth2Token.AccessToken}
 			providerConfig := oidc.ProviderConfig{UserInfoURL: conf.OidcUserInfoURL}
-			provider := providerConfig.NewProvider(c)
-			userInfo, err := provider.UserInfo(c, token)
+			userInfo, err := providerConfig.NewProvider(c).UserInfo(c, token)
 			if err != nil {
 				log.Warnf("exchange access_token for user's information failed: %s", err)
 				c.AbortWithStatus(http.StatusForbidden)
@@ -73,24 +90,36 @@ func Oidc() gin.HandlerFunc {
 			}
 
 			// set the cookie
-			conf.CookieStore.MaxAge(conf.OidcExpireTime)
-			cookie, _ := conf.CookieStore.Get(c.Request, "oidc")
-			cookie.Values["oidc_id"] = userInfo.Subject
-			conf.OidcId = userInfo.Subject
-			cookie.Save(c.Request, c.Writer)
-			c.AbortWithStatus(http.StatusOK)
-			return
-		}
+			info := &jwt.Userinfo{
+				Name:   userInfo.Email,
+				UserId: userInfo.Email,
+			}
 
-		if c.Request.URL.Path == "/apisix/admin/oidc/logout" {
-			cookie, _ := conf.CookieStore.Get(c.Request, "oidc")
-			if cookie.IsNew {
+			var claims map[string]any
+			if err = userInfo.Claims(&claims); err != nil {
+				log.Warnf("provider claims failed: %s", err)
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			info.Avatar, _ = claims["picture"].(string)
+			if name, ok := claims["name"].(string); ok {
+				info.Name = name
+			}
+
+			userToken, err := jwt.GenToken(info, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, OIDCName)
+			if err != nil {
+				log.Warnf("gen user's token information failed: %s", err)
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
 
-			cookie.Options.MaxAge = -1
-			cookie.Save(c.Request, c.Writer)
+			c.SetCookie(OIDCTokenCookieKey, userToken, 60, "/", "", false, false)
+			c.Redirect(http.StatusTemporaryRedirect, "/")
+			c.Abort()
+			return
+		}
+
+		if c.Request.URL.Path == OIDCLogoutPath {
 			c.AbortWithStatus(http.StatusOK)
 			return
 		}

@@ -22,6 +22,7 @@ import { history, Link, useIntl } from 'umi';
 import logo from '@/assets/logo.svg';
 import Footer from '@/components/Footer';
 import { getUrlQuery } from '@/helpers';
+import LoginMethodODIC from '@/pages/User/components/LoginMethodOIDC';
 import LoginMethodPassword from '@/pages/User/components/LoginMethodPassword';
 import type { UserModule } from '@/pages/User/typing';
 import { SelectLang } from '@@/plugin-locale/SelectLang';
@@ -33,7 +34,7 @@ const Tab = Tabs.TabPane;
 /**
  * Login Methods List
  */
-const loginMethods: UserModule.LoginMethod[] = [LoginMethodPassword];
+const loginMethods: UserModule.LoginMethod[] = [LoginMethodPassword, LoginMethodODIC];
 
 /**
  * User Login Page
@@ -45,7 +46,14 @@ const Page: React.FC = () => {
 
   const onTabChange = (activeKey: string) => {
     loginMethods.forEach((item, index) => {
-      if (activeKey === item.id) setLoginMethod(loginMethods[index]);
+      if (activeKey === item.id) {
+        setLoginMethod(loginMethods[index]);
+
+        const redirect = loginMethods[index].redirectTo;
+        if (redirect != null && redirect.length > 0) {
+          window.location.href = redirect;
+        }
+      }
     });
   };
 
@@ -57,7 +65,7 @@ const Page: React.FC = () => {
             notification.success({
               message: formatMessage({ id: 'component.status.success' }),
               description: response.message,
-              duration: 1,
+              duration: 0.5,
               onClose: () => {
                 let redirect = getUrlQuery('redirect');
                 if (redirect) {
@@ -68,7 +76,7 @@ const Page: React.FC = () => {
                 } else {
                   redirect = '/';
                 }
-                history.replace(redirect);
+                window.location.href = redirect;
               },
             });
           }
