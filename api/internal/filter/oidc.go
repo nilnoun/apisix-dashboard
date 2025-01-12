@@ -64,7 +64,7 @@ func Oidc() gin.HandlerFunc {
 
 		if c.Request.URL.Path == OIDCCallbackPath {
 			authState, _ := c.Cookie(OIDCStateCookieKey)
-			c.SetCookie(OIDCStateCookieKey, "", -1, OIDCCallbackPath, "", false, true)
+			c.SetCookie(OIDCStateCookieKey, "", 0, OIDCCallbackPath, "", false, true)
 
 			state := c.Query("state")
 			if state != authState {
