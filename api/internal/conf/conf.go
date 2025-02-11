@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/deckarep/golang-set"
 	"github.com/gorilla/sessions"
 	"github.com/spf13/viper"
 	"github.com/tidwall/gjson"
@@ -74,6 +75,13 @@ var (
 	OidcConfig       oauth2.Config
 	OidcExpireTime   int
 	OidcUserInfoURL  string
+
+	Oauth2Config        oauth2.Config
+	Oauth2Enabled       = false
+	Oauth2ExpireTime    int
+	Oauth2UserInfoURL   string
+	Oauth2UserinfoField UserinfoField
+	Oauth2WhitelistSet  mapset.Set
 )
 
 type MTLS struct {
@@ -149,11 +157,32 @@ type Oidc struct {
 	Scope        string
 }
 
+type UserinfoField struct {
+	ID     string `mapstructure:"id"`
+	Avatar string `mapstructure:"avatar"`
+	Name   string `mapstructure:"name"`
+}
+
+type Oauth2 struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	ExpireTime    int    `mapstructure:"expire_time" yaml:"expire_time"`
+	ClientID      string `mapstructure:"client_id"`
+	ClientSecret  string `mapstructure:"client_secret"`
+	AuthURL       string `mapstructure:"auth_url"`
+	TokenURL      string `mapstructure:"token_url"`
+	UserInfoURL   string `mapstructure:"user_info_url"`
+	RedirectURL   string `mapstructure:"redirect_url"`
+	Scope         string
+	UserinfoField UserinfoField `mapstructure:"userinfo_field"`
+	Whitelist     []string      `mapstructure:"whitelist"`
+}
+
 type Config struct {
 	Conf           Conf
 	Authentication Authentication
 	Plugins        []string
 	Oidc           Oidc
+	Oauth2         Oauth2
 }
 
 type Security struct {
@@ -283,6 +312,9 @@ func setupConfig() {
 	// set Oidc
 	initOidc(config.Oidc)
 
+	// set Oauth2
+	initOauth2(config.Oauth2)
+
 	// set plugin
 	initPlugins(config.Plugins)
 
@@ -319,6 +351,24 @@ func initOidc(conf Oidc) {
 	OidcConfig.Scopes = append(OidcConfig.Scopes, conf.Scope)
 	OidcConfig.RedirectURL = conf.RedirectURL
 	OidcUserInfoURL = conf.UserInfoURL
+}
+
+func initOauth2(conf Oauth2) {
+	Oauth2Config.ClientID = conf.ClientID
+	Oauth2Config.ClientSecret = conf.ClientSecret
+	Oauth2Config.Endpoint = oauth2.Endpoint{AuthURL: conf.AuthURL, TokenURL: conf.TokenURL, AuthStyle: 1}
+	Oauth2Config.Scopes = append(Oauth2Config.Scopes, conf.Scope)
+	Oauth2Config.RedirectURL = conf.RedirectURL
+
+	Oauth2Enabled = conf.Enabled
+	Oauth2ExpireTime = conf.ExpireTime
+	Oauth2UserInfoURL = conf.UserInfoURL
+	Oauth2UserinfoField = conf.UserinfoField
+
+	Oauth2WhitelistSet = mapset.NewSet()
+	for _, item := range conf.Whitelist {
+		Oauth2WhitelistSet.Add(item)
+	}
 }
 
 func initPlugins(plugins []string) {

@@ -18,7 +18,7 @@ const LoginMethodOIDC: UserModule.LoginMethod = {
       </div>
     );
   },
-  redirectTo: `${appRequest.prefix}/oidc/login`,
+  redirectTo: `${appRequest.prefix}/oauth2/login`,
   getData(): UserModule.LoginData {
     if (formRef.current) {
       const data = formRef.current.getFieldsValue();

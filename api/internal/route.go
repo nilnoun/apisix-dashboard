@@ -64,6 +64,9 @@ func SetUpRouter() *gin.Engine {
 	if conf.OidcEnabled {
 		r.Use(filter.Oidc())
 	}
+	if conf.Oauth2Enabled {
+		r.Use(filter.Oauth2())
+	}
 	r.Use(filter.Authentication())
 
 	// misc

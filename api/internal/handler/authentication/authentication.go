@@ -17,12 +17,13 @@
 package authentication
 
 import (
+	"net/http"
 	"reflect"
-	"time"
 
+	"github.com/apisix/manager-api/internal/utils/jwt"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 	"github.com/shiningrush/droplet"
+	"github.com/shiningrush/droplet/data"
 	"github.com/shiningrush/droplet/wrapper"
 	wgin "github.com/shiningrush/droplet/wrapper/gin"
 
@@ -41,6 +42,7 @@ func NewHandler() (handler.RouteRegister, error) {
 func (h *Handler) ApplyRoute(r *gin.Engine) {
 	r.POST("/apisix/admin/user/login", wgin.Wraps(h.userLogin,
 		wrapper.InputType(reflect.TypeOf(LoginInput{}))))
+	r.GET("/apisix/admin/user/info", h.userinfo)
 }
 
 type UserSession struct {
@@ -63,25 +65,27 @@ type LoginInput struct {
 // produces:
 // - application/json
 // parameters:
-// - name: username
-//   in: body
-//   description: user name
-//   required: true
-//   type: string
-// - name: password
-//   in: body
-//   description: password
-//   required: true
-//   type: string
+//   - name: username
+//     in: body
+//     description: user name
+//     required: true
+//     type: string
+//   - name: password
+//     in: body
+//     description: password
+//     required: true
+//     type: string
+//
 // responses:
-//   '0':
-//     description: login success
-//     schema:
-//       "$ref": "#/definitions/ApiError"
-//   default:
-//     description: unexpected error
-//     schema:
-//       "$ref": "#/definitions/ApiError"
+//
+//	'0':
+//	  description: login success
+//	  schema:
+//	    "$ref": "#/definitions/ApiError"
+//	default:
+//	  description: unexpected error
+//	  schema:
+//	    "$ref": "#/definitions/ApiError"
 func (h *Handler) userLogin(c droplet.Context) (interface{}, error) {
 	input := c.Input().(*LoginInput)
 	username := input.Username
@@ -92,17 +96,35 @@ func (h *Handler) userLogin(c droplet.Context) (interface{}, error) {
 		return nil, consts.ErrUsernamePassword
 	}
 
-	// create JWT for session
-	claims := jwt.StandardClaims{
-		Subject:   username,
-		IssuedAt:  time.Now().Unix(),
-		ExpiresAt: time.Now().Add(time.Second * time.Duration(conf.AuthConf.ExpireTime)).Unix(),
+	userinfo := &jwt.Userinfo{
+		Name:   username,
+		UserId: username,
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, _ := token.SignedString([]byte(conf.AuthConf.Secret))
+	token, err := jwt.GenToken(userinfo, conf.AuthConf.ExpireTime, conf.AuthConf.Secret, "password")
+	if err != nil {
+		return nil, err
+	}
 
 	// output token
 	return &UserSession{
-		Token: signedToken,
+		Token: token,
 	}, nil
+}
+
+func (h *Handler) userinfo(c *gin.Context) {
+	userinfo, ok := c.Get("userinfo")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, data.NewInternalError("failed to get userinfo"))
+		return
+	}
+	info, ok := userinfo.(*jwt.Userinfo)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, data.NewInternalError("failed to get userinfo"))
+		return
+	}
+
+	resp := data.Response{
+		Data: info,
+	}
+	c.JSON(http.StatusOK, resp)
 }

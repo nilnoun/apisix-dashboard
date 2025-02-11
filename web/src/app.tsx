@@ -34,10 +34,10 @@ export async function getInitialState(): Promise<{
   currentUser?: API.CurrentUser;
   settings?: LayoutSettings;
 }> {
-  const oidcCookie = Cookies.get('oidc_token');
-  if (oidcCookie) {
-    localStorage.setItem('token', oidcCookie);
-    Cookies.remove('oidc_token');
+  const oauth2Cookie = Cookies.get('oauth2_token');
+  if (oauth2Cookie) {
+    localStorage.setItem('token', oauth2Cookie);
+    Cookies.remove('oauth2_token');
   }
 
   const token = localStorage.getItem('token');

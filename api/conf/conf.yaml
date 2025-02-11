@@ -91,6 +91,23 @@ oidc:
   redirect_url: http://127.0.0.1:9000/apisix/admin/oidc/callback
   scope: openid
 
+oauth2:
+  enabled: true
+  expire_time: 3600
+  client_id:
+  client_secret:
+  auth_url: https://accounts.feishu.cn/open-apis/authen/v1/authorize
+  token_url: https://open.feishu.cn/open-apis/authen/v2/oauth/token
+  user_info_url: https://open.feishu.cn/open-apis/authen/v1/user_info
+  redirect_url: http://127.0.0.1:8000/apisix/admin/oauth2/callback
+  scope: ""
+  userinfo_field:
+    id: "data.email"
+    name: "data.name"
+    avatar: "data.avatar_url"
+  whitelist:
+    - "nilnoun@foxmail.com"
+
 plugins:
   - api-breaker
   - authz-casbin
