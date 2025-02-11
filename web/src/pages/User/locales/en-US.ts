@@ -28,4 +28,5 @@ export default {
   'component.user.loginMethodPassword.changeDefaultAccount': 'How to update username/password?',
   'component.user.loginMethodPassword.modificationMethod':
     'Please modify the users field in the /api/conf/conf.yaml file',
+  'component.user.loginMethodODIC': 'OIDC',
 };

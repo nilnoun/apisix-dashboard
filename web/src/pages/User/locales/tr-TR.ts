@@ -29,4 +29,5 @@ export default {
     'Kullanıcı adı ve şifreyi değiştirmek nasıl yapılır?',
   'component.user.loginMethodPassword.modificationMethod':
     'Lütfen /api/conf/conf.yaml dosyasındaki kullanıcılar alanını değiştirin',
+  'component.user.loginMethodODIC': 'OIDC',
 };

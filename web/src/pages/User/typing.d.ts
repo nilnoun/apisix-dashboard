@@ -26,6 +26,7 @@ declare namespace UserModule {
     checkData: () => Promise<boolean>;
     submit: (data) => Promise<LoginResponse>;
     logout: () => void;
+    redirectTo?: string;
   };
 
   type LoginData = {

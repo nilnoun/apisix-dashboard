@@ -14,13 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import logo from '@/assets/logo.svg';
+
+import { request } from 'umi';
 
 export async function queryCurrent(): Promise<API.CurrentUser> {
+  const result = await request('/user/info', { method: 'GET' });
+  const userinfo = result.data;
+
   return Promise.resolve({
-    name: 'APISIX User',
-    avatar: logo,
-    userid: '00000001',
+    name: userinfo.name,
+    avatar: userinfo.avatar,
+    userid: userinfo.user_id,
     access: 'admin',
   });
 }

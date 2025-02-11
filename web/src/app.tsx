@@ -17,6 +17,7 @@
 import './libs/iconfont';
 
 import type { Settings as LayoutSettings } from '@ant-design/pro-layout';
+import Cookies from 'js-cookie';
 import { isPlainObject } from 'lodash';
 import React from 'react';
 import type { RequestConfig } from 'umi';
@@ -33,6 +34,12 @@ export async function getInitialState(): Promise<{
   currentUser?: API.CurrentUser;
   settings?: LayoutSettings;
 }> {
+  const oidcCookie = Cookies.get('oidc_token');
+  if (oidcCookie) {
+    localStorage.setItem('token', oidcCookie);
+    Cookies.remove('oidc_token');
+  }
+
   const token = localStorage.getItem('token');
   if (!token) {
     const redirect = getUrlQuery('redirect') || '/';
